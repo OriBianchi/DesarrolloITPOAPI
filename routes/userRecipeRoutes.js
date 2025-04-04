@@ -7,13 +7,21 @@ const {
 } = require("../controllers/userRecipeController");
 const authMiddleware = require("../middleware/authMiddleware");
 
+
+/**
+ * @swagger
+ * tags:
+ *   name: Saved Recipes
+ *   description: For handling saved recipes of a user.
+ */
+
 /**
  * @swagger
  * /api/user/recipes/save:
  *   post:
  *     summary: Save a recipe to the user's saved recipes
  *     description: Allows a logged-in user to save a recipe.
- *     tags: [User Recipes]
+ *     tags: [Saved Recipes]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -48,7 +56,7 @@ router.post("/save", authMiddleware, saveRecipe);
  *   post:
  *     summary: Remove a saved recipe from the user's saved recipes
  *     description: Allows a logged-in user to unsave a recipe.
- *     tags: [User Recipes]
+ *     tags: [Saved Recipes]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -81,7 +89,7 @@ router.post("/unsave", authMiddleware, unsaveRecipe);
  *   get:
  *     summary: Get all saved recipes for the authenticated user
  *     description: Fetches all recipes that the user has saved.
- *     tags: [User Recipes]
+ *     tags: [Saved Recipes]
  *     security:
  *       - bearerAuth: []
  *     responses:

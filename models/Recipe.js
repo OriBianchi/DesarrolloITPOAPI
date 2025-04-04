@@ -17,6 +17,13 @@ const recipeSchema = new mongoose.Schema({
     ingredients: [{ name: String, amount: Number }],
     steps: [{ description: String, photos: [{ data: Buffer, contentType: String }] }],
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    comments: [{
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  text: { type: String, required: true, maxlength: 500 },
+  approved: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+}]
+
 });
 
 module.exports = mongoose.model("Recipe", recipeSchema);

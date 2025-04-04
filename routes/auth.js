@@ -15,10 +15,17 @@ const router = express.Router();  // Initialize the router
 
 /**
  * @swagger
+ * tags:
+ *   name: Authentication
+ *   description: For handling registration, login and identification.
+ */
+
+/**
+ * @swagger
  * /api/auth/register:
  *   post:
  *     summary: Register a new user
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -50,7 +57,7 @@ router.post("/register", register);
  * /api/auth/login:
  *   post:
  *     summary: Log in a user
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -79,7 +86,7 @@ router.post("/login", login);
  * /api/auth/me:
  *   get:
  *     summary: Get the current logged-in user
- *     tags: [Auth]
+ *     tags: [Authentication]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -92,12 +99,20 @@ router.post("/login", login);
  */
 router.get("/me", authMiddleware, getUser);
 
+
+/**
+ * @swagger
+ * tags:
+ *   name: Password Reset
+ *   description: For handling password reset.
+ */
+
 /**
  * @swagger
  * /api/auth/request-reset:
  *   post:
  *     summary: Request a password reset link (sent via email)
- *     tags: [Auth]
+ *     tags: [Password Reset]
  *     requestBody:
  *       required: true
  *       content:
@@ -123,7 +138,7 @@ router.post("/request-reset", requestPasswordReset);
  * /api/auth/verify-reset-code:
  *   post:
  *     summary: Verify the reset code entered by the user
- *     tags: [Auth]
+ *     tags: [Password Reset]
  *     requestBody:
  *       required: true
  *       content:
@@ -149,7 +164,7 @@ router.post("/verify-reset-code", verifyResetCode);
  * /api/auth/reset-password:
  *   post:
  *     summary: Reset the user's password
- *     tags: [Auth]
+ *     tags: [Password Reset]
  *     requestBody:
  *       required: true
  *       content:
