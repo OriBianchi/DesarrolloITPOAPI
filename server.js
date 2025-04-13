@@ -56,7 +56,12 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log("✅ MongoDB connected"))
     .catch((err) => console.error("❌ MongoDB connection error:", err));
-
+mongoose.connection.on('connected', () => {
+  console.log('✅ Mongoose connected to MongoDB Atlas');
+});
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Mongoose connection error (EVENT):', err);
+});
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/recipes", recipeRoutes); // Added recipe routes
