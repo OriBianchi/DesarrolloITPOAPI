@@ -17,6 +17,7 @@ app.use(express.json());  // Ensure this is before routes
 
 app.use(cors());
 
+
 // Swagger setup
 const swaggerOptions = {
     definition: {
