@@ -71,6 +71,8 @@ router.get("/comments/pending", authMiddleware, requireAdmin, getPendingComments
  * @swagger
  * /api/recipes:
  *   get:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Get filtered and sorted recipes
  *     description: Retrieves recipes with various filtering and sorting options.
  *     tags: [Recipes]
