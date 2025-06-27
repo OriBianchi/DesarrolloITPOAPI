@@ -15,7 +15,7 @@ const authMiddleware = (req, res, next) => {
         console.log("🧩 Decoded token:", verified);
         
         // Store the userId in the request object
-        req.userId = verified.userId || verified.id;
+        req.userId = verified.userId;
         next();
     } catch (error) {
         console.error("❌ Token verification failed:", error);
