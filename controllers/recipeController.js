@@ -622,10 +622,21 @@ ingredient,
             }
         }
 
-        // Retrieve recipes from the database
-        const recipes = await Recipe.find(query).sort(sort);
+       let recipes = await Recipe.find(query).sort(sort);
 
-        return res.status(200).json({ recipes });
+       if (req.userId) {
+           const user = await User.findById(req.userId).select("savedRecipes");
+           const savedSet = new Set(user?.savedRecipes.map(id => id.toString()));
+
+           recipes = recipes.map(recipe => {
+               const recipeObj = recipe.toObject();
+               recipeObj.isSaved = savedSet.has(recipe._id.toString());
+               return recipeObj;
+           });
+       }
+
+       return res.status(200).json({ recipes });
+
     } catch (error) {
         console.error("❌ Error fetching recipes:", error);
         res.status(500).json({ message: "Error en el servidor" });
