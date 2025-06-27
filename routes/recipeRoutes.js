@@ -132,7 +132,8 @@ router.get("/comments/pending", authMiddleware, requireAdmin, getPendingComments
  *       500:
  *         description: Server error.
  */
-router.get("/", getFilteredRecipes);  // This will now call the getFilteredRecipes function from recipeController
+router.get("/", authMiddleware, getFilteredRecipes);
+  // This will now call the getFilteredRecipes function from recipeController
 
 /**
  * @swagger
