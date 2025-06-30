@@ -163,7 +163,7 @@ router.get("/", getFilteredRecipes);  // This will now call the getFilteredRecip
  *                 example: "Pasta Carbonara"
  *               classification:
  *                 type: string
- *                 example: "Breakfast"
+ *                 example: "Almuerzo"
  *               description:
  *                 type: string
  *                 maxLength: 200

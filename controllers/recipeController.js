@@ -5,11 +5,17 @@ const User = require("../models/User");
 exports.createRecipe = async (req, res) => {
     try {
         const userId = req.userId; // Set in authentication middleware
+
         const { name, classification, description, portions, ingredients, steps } = req.body;
 
         // Validate required fields
         if (!name || !classification || !description || !portions || !ingredients || !steps) {
             return res.status(400).json({ message: "Todos los campos son obligatorios" });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "Usuario no encontrado" });
         }
 
         // Create the new recipe
@@ -20,7 +26,8 @@ exports.createRecipe = async (req, res) => {
             portions,
             ingredients,
             steps,
-            userId
+            userId,
+            username: user.username
         });
 
         // Save recipe
