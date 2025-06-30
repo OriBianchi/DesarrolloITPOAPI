@@ -1,14 +1,13 @@
 const Recipe = require("../models/Recipe");
 const User = require("../models/User");
 
-// Create a new recipe
+// Crear receta
 exports.createRecipe = async (req, res) => {
     try {
-        const userId = req.userId; // Set in authentication middleware
+        const userId = req.userId;
 
         const { name, classification, description, portions, ingredients, steps } = req.body;
 
-        // Validate required fields
         if (!name || !classification || !description || !portions || !ingredients || !steps) {
             return res.status(400).json({ message: "Todos los campos son obligatorios" });
         }
@@ -18,7 +17,6 @@ exports.createRecipe = async (req, res) => {
             return res.status(404).json({ message: "Usuario no encontrado" });
         }
 
-        // Create the new recipe
         const newRecipe = new Recipe({
             name,
             classification,
@@ -30,21 +28,17 @@ exports.createRecipe = async (req, res) => {
             username: user.username
         });
 
-        // Save recipe
         const savedRecipe = await newRecipe.save();
-
-        // Add recipe ID to the user's recipes array
         await User.findByIdAndUpdate(userId, { $push: { recipes: savedRecipe._id } });
 
         res.status(201).json({ message: "Receta creada con éxito", recipe: savedRecipe });
-
     } catch (error) {
         console.error("❌ Error creating recipe:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
-// Get all recipes from a user by username
+// Obtener recetas de un usuario
 exports.getUserRecipes = async (req, res) => {
     try {
         const { username } = req.params;
@@ -54,13 +48,12 @@ exports.getUserRecipes = async (req, res) => {
         if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
 
         const requestingUser = await User.findById(requestingUserId);
-
         const isAdmin = requestingUser?.role === "admin";
         const isOwner = requestingUserId === user._id.toString();
 
         const filter = { userId: user._id };
         if (!isAdmin && !isOwner) {
-            filter.status = true; // Only approved if not owner/admin
+            filter.status = true;
         }
 
         const recipes = await Recipe.find(filter);
@@ -71,7 +64,7 @@ exports.getUserRecipes = async (req, res) => {
     }
 };
 
-// Get a single recipe by ID
+// Obtener receta por ID
 exports.getRecipeById = async (req, res) => {
     try {
         const recipeId = req.params.recipeId;
@@ -81,7 +74,6 @@ exports.getRecipeById = async (req, res) => {
 
         const requestingUserId = req.userId;
         const requestingUser = await User.findById(requestingUserId);
-
         const isAdmin = requestingUser?.role === "admin";
         const isOwner = recipe.userId._id.toString() === requestingUserId;
 
@@ -96,11 +88,9 @@ exports.getRecipeById = async (req, res) => {
     }
 };
 
-
-// Get filtered recipes based on query parameters
+// Obtener recetas filtradas
 exports.getFilteredRecipes = async (req, res) => {
     try {
-        // Extract query params
         const {
             name,
             classification,
@@ -109,126 +99,124 @@ exports.getFilteredRecipes = async (req, res) => {
             createdBy,
             sortBy,
             sortOrder = "asc",
-            savedByUser, // New query parameter to filter by saved recipes
+            savedByUser
         } = req.query;
 
-        // Build Mongo query
         const query = {};
 
-        // Filter by name (partial match)
         if (name) {
-            query.name = { $regex: name, $options: "i" };  // Case-insensitive match
+            query.$or = [
+                { name: { $regex: name, $options: "i" } },
+                { description: { $regex: name, $options: "i" } },
+                { "ingredients.name": { $regex: name, $options: "i" } }
+            ];
         }
 
-        // Filter by classification
         if (classification) {
             query.classification = classification;
         }
 
-        // Filter by ingredients (recipes that contain this ingredient)
         if (ingredient) {
-            query["ingredients.name"] = { $regex: ingredient, $options: "i" };  // Case-insensitive match
+            const ingredientes = ingredient.split(',').map(i => i.trim().toLowerCase());
+            query["ingredients.name"] = { $in: ingredientes };
         }
 
-        // Exclude recipes with specific ingredient
         if (excludeIngredient) {
-            query["ingredients.name"] = { $ne: excludeIngredient };  // Exclude recipes containing this ingredient
+            const excludeArray = excludeIngredient.split(',').map(s => s.trim());
+            query["ingredients.name"] = { $nin: excludeArray };
         }
 
-        // Filter by user ID
         if (createdBy) {
-            const user = await User.findOne({ username: createdBy });
-            if (user) {
-                query.userId = user._id;
+            const usernames = createdBy.split(',').map(u => u.trim());
+            const users = await User.find({ username: { $in: usernames } });
+
+            if (users.length > 0) {
+                const userIds = users.map(u => u._id);
+                query.userId = { $in: userIds };
             } else {
-                return res.status(404).json({ message: "Usuario no encontrado" });
+                return res.status(404).json({ message: "Ninguno de los usuarios fue encontrado" });
             }
         }
 
-        // Handle filtering by saved recipes
         if (savedByUser === "true") {
             const user = await User.findById(req.userId).select("savedRecipes");
-            if (!user) {
-                return res.status(404).json({ message: "Usuario no encontrado" });
-            }
-            query._id = { $in: user.savedRecipes };  // Only return recipes that the user has saved
+            if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+            query._id = { $in: user.savedRecipes };
         }
 
-        // Build sort object
         const sort = {};
-        if (sortBy) {
-            if (sortBy === "name" || sortBy === "uploadDate" || sortBy === "username") {
-                sort[sortBy] = sortOrder === "asc" ? 1 : -1;
-            }
+        if (sortBy && ["name", "uploadDate", "username"].includes(sortBy)) {
+            sort[sortBy] = sortOrder === "asc" ? 1 : -1;
         }
 
-        // Retrieve recipes from the database
-        const recipes = await Recipe.find(query).sort(sort);
+        let recipes = await Recipe.find(query).sort(sort);
 
-        return res.status(200).json({ recipes });
+        if (req.userId) {
+            const user = await User.findById(req.userId).select("savedRecipes");
+            const savedSet = new Set(user?.savedRecipes.map(id => id.toString()));
+
+            recipes = recipes.map(recipe => {
+                const recipeObj = recipe.toObject();
+                recipeObj.isSaved = savedSet.has(recipe._id.toString());
+                return recipeObj;
+            });
+        }
+
+        res.status(200).json({ recipes });
     } catch (error) {
         console.error("❌ Error fetching recipes:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
-// Update an existing recipe
+// Actualizar receta
 exports.updateRecipe = async (req, res) => {
     try {
         const recipeId = req.params.recipeId;
         const userId = req.userId;
 
-        const existingRecipe = await Recipe.findById(recipeId);
-
-        if (!existingRecipe) {
-            return res.status(404).json({ message: "Receta no encontrada" });
-        }
-
-        if (existingRecipe.userId.toString() !== userId) {
+        const recipe = await Recipe.findById(recipeId);
+        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
+        if (recipe.userId.toString() !== userId) {
             return res.status(403).json({ message: "No tienes permiso para editar esta receta" });
         }
 
         const allowedFields = ["name", "classification", "description", "portions", "ingredients", "steps"];
         for (const key in req.body) {
             if (allowedFields.includes(key)) {
-                existingRecipe[key] = req.body[key];
+                recipe[key] = req.body[key];
             }
         }
 
-        const updatedRecipe = await existingRecipe.save();
-        res.status(200).json({ message: "Receta actualizada con éxito", recipe: updatedRecipe });
-
+        const updatedRecipe = await recipe.save();
+        res.status(200).json({ message: "Receta actualizada", recipe: updatedRecipe });
     } catch (error) {
         console.error("❌ Error updating recipe:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
-// Delete a recipe (only by owner)
+// Eliminar receta
 exports.deleteRecipe = async (req, res) => {
     try {
         const recipeId = req.params.recipeId;
         const userId = req.userId;
 
         const recipe = await Recipe.findById(recipeId);
-        if (!recipe) {
-            return res.status(404).json({ message: "Receta no encontrada" });
-        }
-
+        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
         if (recipe.userId.toString() !== userId) {
             return res.status(403).json({ message: "No tienes permiso para eliminar esta receta" });
         }
 
         await Recipe.findByIdAndDelete(recipeId);
-
-        res.status(200).json({ message: "Receta eliminada con éxito" });
+        res.status(200).json({ message: "Receta eliminada" });
     } catch (error) {
         console.error("❌ Error deleting recipe:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
-// Rate or update rating on a recipe
+// Calificar receta
 exports.rateRecipe = async (req, res) => {
     try {
         const userId = req.userId;
@@ -240,32 +228,26 @@ exports.rateRecipe = async (req, res) => {
         }
 
         const recipe = await Recipe.findById(recipeId);
-        if (!recipe) {
-            return res.status(404).json({ message: "Receta no encontrada" });
-        }
+        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
-        const existingRatingIndex = recipe.ratings.findIndex(r => r.userId.toString() === userId);
-
-        if (existingRatingIndex !== -1) {
-            // Update existing rating
-            recipe.ratings[existingRatingIndex].rating = rating;
+        const existing = recipe.ratings.findIndex(r => r.userId.toString() === userId);
+        if (existing !== -1) {
+            recipe.ratings[existing].rating = rating;
         } else {
-            // Add new rating
             recipe.ratings.push({ userId, rating });
         }
 
-        // Recalculate average
-        const total = recipe.ratings.reduce((sum, r) => sum + r.rating, 0);
-        recipe.rating = total / recipe.ratings.length;
-
+        recipe.rating = recipe.ratings.reduce((sum, r) => sum + r.rating, 0) / recipe.ratings.length;
         await recipe.save();
 
-        res.status(200).json({ message: "Calificación registrada", rating: recipe.rating });
+        res.status(200).json({ message: "Calificación actualizada", rating: recipe.rating });
     } catch (error) {
         console.error("❌ Error rating recipe:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
+
+// Comentar receta
 exports.addComment = async (req, res) => {
     try {
         const userId = req.userId;
@@ -277,31 +259,22 @@ exports.addComment = async (req, res) => {
         }
 
         const recipe = await Recipe.findById(recipeId);
-        if (!recipe) {
-            return res.status(404).json({ message: "Receta no encontrada" });
-        }
+        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
-        const newComment = {
-            userId,
-            text,
-            approved: false, // default
-            createdAt: new Date()
-        };
-
-        recipe.comments.push(newComment);
+        recipe.comments.push({ userId, text, approved: false, createdAt: new Date() });
         await recipe.save();
 
-        res.status(201).json({ message: "Comentario enviado para revisión" });
+        res.status(201).json({ message: "Comentario enviado" });
     } catch (error) {
-        console.error("❌ Error al comentar:", error);
+        console.error("❌ Error comentando:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
+
+// Aprobar comentario
 exports.approveComment = async (req, res) => {
     try {
         const { recipeId, commentId } = req.params;
-
-        // You can add role-based checks here if needed
         const recipe = await Recipe.findById(recipeId);
         if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
@@ -310,79 +283,68 @@ exports.approveComment = async (req, res) => {
 
         comment.approved = true;
         await recipe.save();
-
         res.status(200).json({ message: "Comentario aprobado" });
     } catch (error) {
         console.error("❌ Error aprobando comentario:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
+
+// Rechazar comentario
 exports.rejectComment = async (req, res) => {
     try {
         const { recipeId, commentId } = req.params;
-
         const recipe = await Recipe.findById(recipeId);
         if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
-        const comment = recipe.comments.id(commentId);
-        if (!comment) return res.status(404).json({ message: "Comentario no encontrado" });
-
-        // Remove the comment manually
         recipe.comments = recipe.comments.filter(c => c._id.toString() !== commentId);
-
         await recipe.save();
 
-        res.status(200).json({ message: "Comentario rechazado y eliminado" });
+        res.status(200).json({ message: "Comentario eliminado" });
     } catch (error) {
-        console.error("❌ Error rejecting comment:", error);
+        console.error("❌ Error rechazando comentario:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
+// Aprobar receta
 exports.approveRecipe = async (req, res) => {
     try {
         const { recipeId } = req.params;
-
         const recipe = await Recipe.findById(recipeId);
-        if (!recipe) {
-            return res.status(404).json({ message: "Receta no encontrada" });
-        }
+        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
         recipe.status = true;
         await recipe.save();
-
-        res.status(200).json({ message: "Receta aprobada con éxito" });
+        res.status(200).json({ message: "Receta aprobada" });
     } catch (error) {
-        console.error("❌ Error approving recipe:", error);
+        console.error("❌ Error aprobando receta:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
+// Rechazar receta
 exports.rejectRecipe = async (req, res) => {
     try {
         const { recipeId } = req.params;
-
         const recipe = await Recipe.findById(recipeId);
-        if (!recipe) {
-            return res.status(404).json({ message: "Receta no encontrada" });
-        }
+        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
         await Recipe.findByIdAndDelete(recipeId);
-
-        res.status(200).json({ message: "Receta rechazada y eliminada correctamente" });
+        res.status(200).json({ message: "Receta eliminada" });
     } catch (error) {
-        console.error("❌ Error rejecting recipe:", error);
+        console.error("❌ Error rechazando receta:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
+// Pendientes
 exports.getPendingRecipes = async (req, res) => {
     try {
         const recipes = await Recipe.find({ status: false }).populate("userId", "username email");
-
         res.status(200).json({ pendingRecipes: recipes });
     } catch (error) {
-        console.error("❌ Error fetching pending recipes:", error);
+        console.error("❌ Error pendientes:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
@@ -394,7 +356,6 @@ exports.getPendingComments = async (req, res) => {
             .populate("comments.userId", "username");
 
         const unapprovedComments = [];
-
         recipes.forEach(recipe => {
             recipe.comments.forEach(comment => {
                 if (!comment.approved) {
@@ -411,8 +372,8 @@ exports.getPendingComments = async (req, res) => {
         });
 
         res.status(200).json(unapprovedComments);
-    } catch (err) {
-        console.error("❌ Error fetching unapproved comments:", err);
+    } catch (error) {
+        console.error("❌ Error comentarios pendientes:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };

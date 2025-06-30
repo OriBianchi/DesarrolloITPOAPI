@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
-const {
-    saveRecipe,
-    unsaveRecipe,
-    getSavedRecipes
-} = require("../controllers/userRecipeController");
-const authMiddleware = require("../middleware/authMiddleware");
 
+const {
+  saveRecipe,
+  unsaveRecipe,
+  getSavedRecipes
+} = require("../controllers/userRecipeController");
+
+const authMiddleware = require("../middleware/authMiddleware");
 
 /**
  * @swagger

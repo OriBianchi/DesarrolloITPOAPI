@@ -71,6 +71,8 @@ router.get("/comments/pending", authMiddleware, requireAdmin, getPendingComments
  * @swagger
  * /api/recipes:
  *   get:
+ *     security:
+ *       - bearerAuth: []
  *     summary: Get filtered and sorted recipes
  *     description: Retrieves recipes with various filtering and sorting options.
  *     tags: [Recipes]
@@ -132,7 +134,8 @@ router.get("/comments/pending", authMiddleware, requireAdmin, getPendingComments
  *       500:
  *         description: Server error.
  */
-router.get("/", getFilteredRecipes);  // This will now call the getFilteredRecipes function from recipeController
+router.get("/", authMiddleware, getFilteredRecipes);
+  // This will now call the getFilteredRecipes function from recipeController
 
 /**
  * @swagger

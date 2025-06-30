@@ -17,6 +17,7 @@ app.use(express.json());  // Ensure this is before routes
 
 app.use(cors());
 
+
 // Swagger setup
 const swaggerOptions = {
     definition: {
@@ -30,12 +31,12 @@ const swaggerOptions = {
             {
                 url: "https://desarrolloitpoapi.onrender.com",
                 description: "Producción (Render)"
-              },
+            },
             {
-              url: "http://localhost:5000",
-              description: "Localhost (para desarrollo)"
+                url: "http://localhost:5000",
+                description: "Localhost (para desarrollo)"
             }
-          ],                   
+        ],
         components: {
             securitySchemes: {
                 bearerAuth: {
@@ -45,12 +46,19 @@ const swaggerOptions = {
                 },
             },
         },
-    },
-    apis: ["./routes/*.js"], // Ensures both auth and recipe routes are documented
+        security: [
+            {
+                bearerAuth: [],
+            },
+        ],
+        },
+        apis: ["./routes/*.js"], // Ensures both auth and recipe routes are documented
+
 };
 
 const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
 
 // Database connection
 mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
