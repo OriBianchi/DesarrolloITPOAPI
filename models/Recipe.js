@@ -19,6 +19,7 @@ const recipeSchema = new mongoose.Schema({
     ingredients: [{ name: String, amount: Number }],
     steps: [{ description: String, photos: [{ data: Buffer, contentType: String }] }],
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    username: { type: String, required: true},
     comments: [{
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   username: { type: String, required: true},

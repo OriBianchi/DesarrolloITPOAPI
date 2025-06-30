@@ -258,13 +258,27 @@ exports.addComment = async (req, res) => {
             return res.status(400).json({ message: "Comentario inválido" });
         }
 
+        // Buscar receta
         const recipe = await Recipe.findById(recipeId);
         if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
-        recipe.comments.push({ userId, text, approved: false, createdAt: new Date() });
+        // Buscar username del autor del comentario
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+
+        // Agregar comentario con username incluido
+        recipe.comments.push({
+            userId,
+            username: user.username,
+            text,
+            approved: false,
+            createdAt: new Date()
+        });
+
         await recipe.save();
 
         res.status(201).json({ message: "Comentario enviado" });
+
     } catch (error) {
         console.error("❌ Error comentando:", error);
         res.status(500).json({ message: "Error en el servidor" });
