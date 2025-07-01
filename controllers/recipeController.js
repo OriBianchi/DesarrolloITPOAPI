@@ -27,7 +27,6 @@ const decodeBase64Image = (photo) => {
         contentType: photo.contentType || 'image/jpeg'
     };
 };
-
 // Crear receta
 exports.createRecipe = async (req, res) => {
     try {
@@ -60,13 +59,19 @@ exports.createRecipe = async (req, res) => {
                 .filter(Boolean)
         }));
 
+        // Convertir nombres de ingredientes a minúsculas
+        const normalizedIngredients = ingredients.map(i => ({
+            name: i.name.toLowerCase(),
+            amount: i.amount
+        }));
+
         // Crear y guardar receta
         const newRecipe = new Recipe({
             name,
             classification,
             description,
             portions,
-            ingredients,
+            ingredients: normalizedIngredients,
             steps: parsedSteps,
             frontpagePhotos,
             userId,
@@ -85,6 +90,7 @@ exports.createRecipe = async (req, res) => {
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
+
 // Obtener recetas de un usuario
 exports.getUserRecipes = async (req, res) => {
     try {
@@ -233,9 +239,7 @@ exports.getFilteredRecipes = async (req, res) => {
         console.error("❌ Error fetching recipes:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
-};
-
-// Actualizar receta
+};// Actualizar receta
 exports.updateRecipe = async (req, res) => {
     try {
         const recipeId = req.params.recipeId;
@@ -261,7 +265,14 @@ exports.updateRecipe = async (req, res) => {
         if (classification) recipe.classification = classification;
         if (description) recipe.description = description;
         if (portions) recipe.portions = portions;
-        if (ingredients) recipe.ingredients = ingredients;
+
+        // Normalizar ingredientes (nombre en minúsculas)
+        if (Array.isArray(ingredients)) {
+            recipe.ingredients = ingredients.map(i => ({
+                name: i.name.toLowerCase(),
+                amount: i.amount
+            }));
+        }
 
         // Procesar fotos portada si vienen
         if (Array.isArray(frontpagePhotos)) {
