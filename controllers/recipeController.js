@@ -143,7 +143,7 @@ exports.getRecipeById = async (req, res) => {
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
-// Obtener recetas filtradas
+
 exports.getFilteredRecipes = async (req, res) => {
     try {
         const {
@@ -158,8 +158,9 @@ exports.getFilteredRecipes = async (req, res) => {
         } = req.query;
 
         const query = {};
+        console.log("📥 Query params:", req.query);
 
-        // Búsqueda general por nombre, descripción o ingrediente
+        // Búsqueda por nombre, descripción o ingrediente
         if (name) {
             const nameRegex = new RegExp(name, "i");
             query.$or = [
@@ -167,48 +168,46 @@ exports.getFilteredRecipes = async (req, res) => {
                 { description: nameRegex },
                 { "ingredients.name": nameRegex }
             ];
+            console.log("🔍 Name search added:", query.$or);
         }
 
-        // Clasificación (tipo)
+        // Clasificación
         if (classification) {
             const tipos = classification.split(',').map(c => c.trim().toLowerCase());
             query.classification = { $in: tipos };
+            console.log("📂 Classification filter:", query.classification);
         }
 
-        // Incluir y excluir ingredientes (combinados correctamente)
-        const ingredientConditions = [];
+        // Incluir y excluir ingredientes
+        const condicionesIngrediente = [];
 
         if (ingredient) {
-            const ingredientesIncluidos = ingredient.split(',').map(i => i.trim().toLowerCase());
-            ingredientConditions.push({
-                ingredients: {
-                    $elemMatch: {
-                        name: { $in: ingredientesIncluidos }
-                    }
+            const incluidos = ingredient.split(',').map(i => i.trim());
+            condicionesIngrediente.push({
+                "ingredients.name": {
+                    $in: incluidos.map(i => new RegExp(`^${i}$`, "i"))
                 }
             });
         }
-
+        
         if (excludeIngredient) {
-            const ingredientesExcluidos = excludeIngredient.split(',').map(i => i.trim().toLowerCase());
-            ingredientConditions.push({
-                ingredients: {
-                    $not: {
-                        $elemMatch: {
-                            name: { $in: ingredientesExcluidos }
-                        }
-                    }
+            const excluidos = excludeIngredient.split(',').map(i => i.trim());
+            condicionesIngrediente.push({
+                "ingredients.name": {
+                    $nin: excluidos.map(i => new RegExp(`^${i}$`, "i"))
                 }
             });
+        }        
+
+        if (condicionesIngrediente.length === 1) {
+            Object.assign(query, condicionesIngrediente[0]);
+        } else if (condicionesIngrediente.length > 1) {
+            query.$and = condicionesIngrediente;
         }
 
-        if (ingredientConditions.length === 1) {
-            Object.assign(query, ingredientConditions[0]);
-        } else if (ingredientConditions.length > 1) {
-            query.$and = ingredientConditions;
-        }
+        console.log("🧾 Final query before user filters:", JSON.stringify(query, null, 2));
 
-        // Filtrado por autor (username)
+        // Autor
         if (createdBy) {
             const usernames = createdBy.split(',').map(u => u.trim());
             const users = await User.find({ username: { $in: usernames } });
@@ -216,27 +215,32 @@ exports.getFilteredRecipes = async (req, res) => {
             if (users.length > 0) {
                 const userIds = users.map(u => u._id);
                 query.userId = { $in: userIds };
+                console.log("👤 Author filter:", userIds);
             } else {
                 return res.status(404).json({ message: "Ninguno de los usuarios fue encontrado" });
             }
         }
 
-        // Solo recetas guardadas por el usuario logueado
+        // Guardados
         if (savedByUser === "true") {
             const user = await User.findById(req.userId).select("savedRecipes");
             if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
             query._id = { $in: user.savedRecipes };
+            console.log("💾 Saved recipes filter:", user.savedRecipes);
         }
 
         // Ordenamiento
         const sort = {};
         if (sortBy && ["name", "uploadDate", "username"].includes(sortBy)) {
             sort[sortBy] = sortOrder === "asc" ? 1 : -1;
+            console.log("📊 Sorting:", sort);
         }
+
+        console.log("🚀 Final Mongo query:", JSON.stringify(query, null, 2));
 
         let recipes = await Recipe.find(query).sort(sort);
 
-        // Agregar campo isSaved si el usuario está logueado
+        // Campo isSaved
         if (req.userId) {
             const user = await User.findById(req.userId).select("savedRecipes");
             const savedSet = new Set(user?.savedRecipes.map(id => id.toString()));
@@ -250,12 +254,15 @@ exports.getFilteredRecipes = async (req, res) => {
             recipes = recipes.map(transformRecipeImages);
         }
 
+        console.log("✅ Recetas encontradas:", recipes.length);
         res.status(200).json({ recipes });
+
     } catch (error) {
         console.error("❌ Error fetching recipes:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
+
 
 // Actualizar receta
 exports.updateRecipe = async (req, res) => {
