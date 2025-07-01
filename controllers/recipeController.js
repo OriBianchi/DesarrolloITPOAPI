@@ -158,41 +158,46 @@ exports.getFilteredRecipes = async (req, res) => {
         } = req.query;
 
         const query = {};
-        const andFilters = [];
 
-        // Filtro por nombre, descripción o ingredientes
+        // Búsqueda general por nombre, descripción o ingrediente
         if (name) {
+            const nameRegex = new RegExp(name, "i");
             query.$or = [
-                { name: { $regex: name, $options: "i" } },
-                { description: { $regex: name, $options: "i" } },
-                { "ingredients.name": { $regex: name, $options: "i" } }
+                { name: nameRegex },
+                { description: nameRegex },
+                { "ingredients.name": nameRegex }
             ];
         }
 
-        // Filtro por tipos de receta (classification)
+        // Clasificación (tipo)
         if (classification) {
-            const clasificaciones = classification.split(',').map(c => c.trim().toLowerCase());
-            query.classification = { $in: clasificaciones };
+            const tipos = classification.split(',').map(c => c.trim().toLowerCase());
+            query.classification = { $in: tipos };
         }
 
-        // Filtro de inclusión de ingredientes
+        // Incluir ingredientes
         if (ingredient) {
-            const ingredientes = ingredient.split(',').map(i => i.trim().toLowerCase());
-            andFilters.push({ "ingredients.name": { $in: ingredientes } });
+            const ingredientesIncluidos = ingredient.split(',').map(i => i.trim().toLowerCase());
+            query.ingredients = {
+                $elemMatch: {
+                    name: { $in: ingredientesIncluidos }
+                }
+            };
         }
 
-        // Filtro de exclusión de ingredientes
+        // Excluir ingredientes
         if (excludeIngredient) {
-            const excludeArray = excludeIngredient.split(',').map(s => s.trim().toLowerCase());
-            andFilters.push({ "ingredients.name": { $nin: excludeArray } });
+            const ingredientesExcluidos = excludeIngredient.split(',').map(i => i.trim().toLowerCase());
+            query.ingredients = {
+                $not: {
+                    $elemMatch: {
+                        name: { $in: ingredientesExcluidos }
+                    }
+                }
+            };
         }
 
-        // Aplicar los filtros combinados con $and si hay
-        if (andFilters.length > 0) {
-            query.$and = andFilters;
-        }
-
-        // Filtro por autor (username)
+        // Filtrado por autor (username)
         if (createdBy) {
             const usernames = createdBy.split(',').map(u => u.trim());
             const users = await User.find({ username: { $in: usernames } });
@@ -205,7 +210,7 @@ exports.getFilteredRecipes = async (req, res) => {
             }
         }
 
-        // Filtro por recetas guardadas por el usuario actual
+        // Solo recetas guardadas por el usuario logueado
         if (savedByUser === "true") {
             const user = await User.findById(req.userId).select("savedRecipes");
             if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
@@ -218,13 +223,13 @@ exports.getFilteredRecipes = async (req, res) => {
             sort[sortBy] = sortOrder === "asc" ? 1 : -1;
         }
 
-        // Buscar recetas
         let recipes = await Recipe.find(query).sort(sort);
 
-        // Marcar guardadas y transformar imágenes
+        // Agregar campo isSaved si el usuario está logueado
         if (req.userId) {
             const user = await User.findById(req.userId).select("savedRecipes");
             const savedSet = new Set(user?.savedRecipes.map(id => id.toString()));
+
             recipes = recipes.map(recipe => {
                 const transformed = transformRecipeImages(recipe);
                 transformed.isSaved = savedSet.has(recipe._id.toString());
@@ -239,7 +244,9 @@ exports.getFilteredRecipes = async (req, res) => {
         console.error("❌ Error fetching recipes:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
-};// Actualizar receta
+};
+
+// Actualizar receta
 exports.updateRecipe = async (req, res) => {
     try {
         const recipeId = req.params.recipeId;
