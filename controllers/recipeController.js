@@ -137,7 +137,6 @@ exports.getRecipeById = async (req, res) => {
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
-
 // Obtener recetas filtradas
 exports.getFilteredRecipes = async (req, res) => {
     try {
@@ -153,7 +152,9 @@ exports.getFilteredRecipes = async (req, res) => {
         } = req.query;
 
         const query = {};
+        const andFilters = [];
 
+        // Filtro por nombre, descripción o ingredientes
         if (name) {
             query.$or = [
                 { name: { $regex: name, $options: "i" } },
@@ -162,20 +163,30 @@ exports.getFilteredRecipes = async (req, res) => {
             ];
         }
 
+        // Filtro por tipos de receta (classification)
         if (classification) {
-            query.classification = classification;
+            const clasificaciones = classification.split(',').map(c => c.trim().toLowerCase());
+            query.classification = { $in: clasificaciones };
         }
 
+        // Filtro de inclusión de ingredientes
         if (ingredient) {
             const ingredientes = ingredient.split(',').map(i => i.trim().toLowerCase());
-            query["ingredients.name"] = { $in: ingredientes };
+            andFilters.push({ "ingredients.name": { $in: ingredientes } });
         }
 
+        // Filtro de exclusión de ingredientes
         if (excludeIngredient) {
-            const excludeArray = excludeIngredient.split(',').map(s => s.trim());
-            query["ingredients.name"] = { $nin: excludeArray };
+            const excludeArray = excludeIngredient.split(',').map(s => s.trim().toLowerCase());
+            andFilters.push({ "ingredients.name": { $nin: excludeArray } });
         }
 
+        // Aplicar los filtros combinados con $and si hay
+        if (andFilters.length > 0) {
+            query.$and = andFilters;
+        }
+
+        // Filtro por autor (username)
         if (createdBy) {
             const usernames = createdBy.split(',').map(u => u.trim());
             const users = await User.find({ username: { $in: usernames } });
@@ -188,24 +199,26 @@ exports.getFilteredRecipes = async (req, res) => {
             }
         }
 
+        // Filtro por recetas guardadas por el usuario actual
         if (savedByUser === "true") {
             const user = await User.findById(req.userId).select("savedRecipes");
             if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
             query._id = { $in: user.savedRecipes };
         }
 
+        // Ordenamiento
         const sort = {};
         if (sortBy && ["name", "uploadDate", "username"].includes(sortBy)) {
             sort[sortBy] = sortOrder === "asc" ? 1 : -1;
         }
 
+        // Buscar recetas
         let recipes = await Recipe.find(query).sort(sort);
 
-        // Marcar recetas guardadas y transformar imágenes
+        // Marcar guardadas y transformar imágenes
         if (req.userId) {
             const user = await User.findById(req.userId).select("savedRecipes");
             const savedSet = new Set(user?.savedRecipes.map(id => id.toString()));
-
             recipes = recipes.map(recipe => {
                 const transformed = transformRecipeImages(recipe);
                 transformed.isSaved = savedSet.has(recipe._id.toString());

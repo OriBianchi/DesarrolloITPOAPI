@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const recipeSchema = new mongoose.Schema({
-    status: { type: Boolean, default: false }, // False until authorized
+    status: { type: Boolean, default: false },
     uploadDate: { type: Date, default: Date.now },
     name: { type: String, required: true, maxlength: 30 },
     classification: { 
@@ -11,10 +11,8 @@ const recipeSchema = new mongoose.Schema({
     },
     description: { type: String, required: true, maxlength: 200 },
     rating: { type: Number, default: 0 },
-    ratings: [{ userId: mongoose.Schema.Types.ObjectId, rating: Number }], // For calculating avg rating
-
-    // TO-DO: GESTIONAR TEMA IMAGWENES
-    frontpagePhotos: [{ data: Buffer, contentType: String }], // Storing images directly in MongoDB
+    ratings: [{ userId: mongoose.Schema.Types.ObjectId, rating: Number }],
+    frontpagePhotos: [{ data: Buffer, contentType: String }],
     portions: { type: Number, required: true },
     ingredients: [{ name: String, amount: Number }],
     steps: [{ description: String, photos: [{ data: Buffer, contentType: String }] }],
