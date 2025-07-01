@@ -1,6 +1,11 @@
 const Recipe = require("../models/Recipe");
 const User = require("../models/User");
 
+const VALID_UNITS = [
+    "g", "kg", "unidades", "tazas", "ml",
+    "cucharadas", "cucharaditas", "pizca", "litros", "cc"
+];
+
 const encodeImageToBase64 = (image) => {
     if (!image || !image.data) return null;
     return {
@@ -72,10 +77,21 @@ exports.createRecipe = async (req, res) => {
         }));
 
         // Convertir nombres de ingredientes a minúsculas
-        const normalizedIngredients = ingredients.map(i => ({
-            name: i.name.toLowerCase(),
-            amount: i.amount
-        }));
+        // Validar y normalizar ingredientes
+        const validUnits = ["g", "kg", "unidades", "tazas", "ml", "cucharadas", "cucharaditas", "pizca", "otro"];
+
+        const normalizedIngredients = ingredients.map(i => {
+            if (!i.name || !i.amount || !i.unit || !VALID_UNITS.includes(i.unit)) {
+                throw new Error(`Ingrediente inválido: ${JSON.stringify(i)}`);
+            }
+        
+            return {
+                name: i.name.toLowerCase(),
+                amount: i.amount,
+                unit: i.unit.toLowerCase()
+            };
+        });        
+
 
         // Crear y guardar receta
         const newRecipe = new Recipe({
@@ -188,7 +204,7 @@ exports.getFilteredRecipes = async (req, res) => {
         // Clasificación
         if (classification) {
             const tipos = classification.split(',').map(c => new RegExp(`^${c.trim()}$`, "i"));
-            query.classification = { $in: tipos };            
+            query.classification = { $in: tipos };
             console.log("📂 Classification filter:", query.classification);
         }
 
@@ -203,7 +219,7 @@ exports.getFilteredRecipes = async (req, res) => {
                 }
             });
         }
-        
+
         if (excludeIngredient) {
             const excluidos = excludeIngredient.split(',').map(i => i.trim());
             condicionesIngrediente.push({
@@ -211,7 +227,7 @@ exports.getFilteredRecipes = async (req, res) => {
                     $nin: excluidos.map(i => new RegExp(`^${i}$`, "i"))
                 }
             });
-        }        
+        }
 
         if (condicionesIngrediente.length === 1) {
             Object.assign(query, condicionesIngrediente[0]);
@@ -252,7 +268,7 @@ exports.getFilteredRecipes = async (req, res) => {
 
         console.log("🚀 Final Mongo query:", JSON.stringify(query, null, 2));
 
-      let recipes = await Recipe.find(query).sort(sort).populate("userId", "username");
+        let recipes = await Recipe.find(query).sort(sort).populate("userId", "username");
 
         // Campo isSaved
         if (req.userId) {
@@ -305,13 +321,19 @@ exports.updateRecipe = async (req, res) => {
         if (description) recipe.description = description;
         if (portions) recipe.portions = portions;
 
-        // Normalizar ingredientes (nombre en minúsculas)
         if (Array.isArray(ingredients)) {
-            recipe.ingredients = ingredients.map(i => ({
-                name: i.name.toLowerCase(),
-                amount: i.amount
-            }));
-        }
+            recipe.ingredients = ingredients.map(i => {
+                if (!i.name || !i.amount || !i.unit || !VALID_UNITS.includes(i.unit)) {
+                    throw new Error(`Ingrediente inválido: ${JSON.stringify(i)}`);
+                }
+        
+                return {
+                    name: i.name.toLowerCase(),
+                    amount: i.amount,
+                    unit: i.unit.toLowerCase()
+                };
+            });
+        }        
 
         // Procesar fotos portada si vienen
         if (Array.isArray(frontpagePhotos)) {
@@ -364,7 +386,7 @@ exports.deleteRecipe = async (req, res) => {
 exports.addComment = async (req, res) => {
     try {
         const userId = req.userId;
-        const { text,  rating  } = req.body;
+        const { text, rating } = req.body;
         const recipeId = req.params.recipeId;
 
         if (!text || text.length > 500 || typeof rating !== "number" || rating < 1 || rating > 5) {
@@ -388,7 +410,7 @@ exports.addComment = async (req, res) => {
             approved: false,
             createdAt: new Date()
         });
-        
+
 
         await recipe.save();
 
@@ -413,7 +435,7 @@ exports.approveComment = async (req, res) => {
         comment.approved = true;
         recalculateRating(recipe);
         await recipe.save();
-        
+
         res.status(200).json({ message: "Comentario aprobado" });
     } catch (error) {
         console.error("❌ Error aprobando comentario:", error);
@@ -430,7 +452,7 @@ exports.rejectComment = async (req, res) => {
 
         recipe.comments = recipe.comments.filter(c => c._id.toString() !== commentId);
         recalculateRating(recipe);
-        await recipe.save();        
+        await recipe.save();
 
         res.status(200).json({ message: "Comentario eliminado" });
     } catch (error) {

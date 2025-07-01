@@ -136,7 +136,6 @@ router.get("/comments/pending", authMiddleware, requireAdmin, getPendingComments
  */
 router.get("/", authMiddleware, getFilteredRecipes);
   // This will now call the getFilteredRecipes function from recipeController
-
 /**
  * @swagger
  * /api/recipes/create:
@@ -170,21 +169,28 @@ router.get("/", authMiddleware, getFilteredRecipes);
  *               description:
  *                 type: string
  *                 maxLength: 200
- *                 example: "A classic Italian pasta dish with eggs, cheese, pancetta, and pepper."
+ *                 example: "Una receta tradicional italiana."
  *               portions:
  *                 type: integer
- *                 example: 2
+ *                 example: 4
  *               ingredients:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - name
+ *                     - amount
+ *                     - unit
  *                   properties:
  *                     name:
  *                       type: string
- *                       example: "Eggs"
+ *                       example: "Harina"
  *                     amount:
  *                       type: number
- *                       example: 2
+ *                       example: 500
+ *                     unit:
+ *                       type: string
+ *                       example: "g"
  *               frontpagePhotos:
  *                 type: array
  *                 items:
@@ -193,7 +199,7 @@ router.get("/", authMiddleware, getFilteredRecipes);
  *                     data:
  *                       type: string
  *                       description: Imagen codificada en base64
- *                       example: "iVBORw0KGgoAAAANSUhEUgAA..."
+ *                       example: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAA..."
  *                     contentType:
  *                       type: string
  *                       example: "image/jpeg"
@@ -204,7 +210,7 @@ router.get("/", authMiddleware, getFilteredRecipes);
  *                   properties:
  *                     description:
  *                       type: string
- *                       example: "Boil pasta"
+ *                       example: "Mezclar la harina con el agua"
  *                     photos:
  *                       type: array
  *                       items:
@@ -213,19 +219,19 @@ router.get("/", authMiddleware, getFilteredRecipes);
  *                           data:
  *                             type: string
  *                             description: Imagen codificada en base64
- *                             example: "iVBORw0KGgoAAAANSUhEUgAA..."
+ *                             example: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."
  *                           contentType:
  *                             type: string
  *                             example: "image/png"
  *     responses:
  *       201:
- *         description: Recipe successfully created.
+ *         description: Receta creada con éxito.
  *       400:
- *         description: Validation error.
+ *         description: Error de validación.
  *       401:
- *         description: Unauthorized.
+ *         description: No autorizado.
  *       500:
- *         description: Server error.
+ *         description: Error en el servidor.
  */
 router.post("/create", authMiddleware, createRecipe);
 
@@ -252,7 +258,6 @@ router.post("/create", authMiddleware, createRecipe);
  *         description: Server error.
  */
 router.get("/:recipeId", getRecipeById);
-
 /**
  * @swagger
  * /api/recipes/{recipeId}:
@@ -288,11 +293,20 @@ router.get("/:recipeId", getRecipeById);
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - name
+ *                     - amount
+ *                     - unit
  *                   properties:
  *                     name:
  *                       type: string
+ *                       example: "Leche"
  *                     amount:
  *                       type: number
+ *                       example: 500
+ *                     unit:
+ *                       type: string
+ *                       example: "ml"
  *               steps:
  *                 type: array
  *                 items:
@@ -300,20 +314,41 @@ router.get("/:recipeId", getRecipeById);
  *                   properties:
  *                     description:
  *                       type: string
+ *                       example: "Hervir la leche"
  *                     photos:
  *                       type: array
  *                       items:
- *                         type: string
+ *                         type: object
+ *                         properties:
+ *                           data:
+ *                             type: string
+ *                             example: "data:image/png;base64,iVBORw0KG..."
+ *                           contentType:
+ *                             type: string
+ *                             example: "image/png"
+ *               frontpagePhotos:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     data:
+ *                       type: string
+ *                       description: Imagen codificada en base64
+ *                       example: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAA..."
+ *                     contentType:
+ *                       type: string
+ *                       example: "image/jpeg"
  *     responses:
  *       200:
- *         description: Recipe updated successfully.
+ *         description: Receta actualizada exitosamente.
  *       403:
- *         description: Forbidden – not the recipe owner.
+ *         description: Prohibido – no eres el dueño de la receta.
  *       404:
- *         description: Recipe not found.
+ *         description: Receta no encontrada.
  *       500:
- *         description: Server error.
+ *         description: Error en el servidor.
  */
+
 router.put("/:recipeId", authMiddleware, updateRecipe);
 
 /**

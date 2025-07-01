@@ -13,7 +13,15 @@ const recipeSchema = new mongoose.Schema({
     rating: { type: Number, default: 0 },
     frontpagePhotos: [{ data: Buffer, contentType: String }],
     portions: { type: Number, required: true },
-    ingredients: [{ name: String, amount: Number }],
+    ingredients: [{
+      name: { type: String, required: true },
+      amount: { type: Number, required: true },
+      unit: {
+        type: String,
+        enum: ["g", "kg", "unidades", "tazas", "ml", "cucharadas", "cucharaditas", "pizca", "litros", "cc"],
+        required: true
+      }
+    }],
     steps: [{ description: String, photos: [{ data: Buffer, contentType: String }] }],
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     username: { type: String, required: true},
