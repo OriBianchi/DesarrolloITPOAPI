@@ -27,6 +27,18 @@ const decodeBase64Image = (photo) => {
         contentType: photo.contentType || 'image/jpeg'
     };
 };
+
+const recalculateRating = (recipe) => {
+    const approvedWithRating = recipe.comments.filter(c => c.approved && typeof c.rating === "number");
+    if (approvedWithRating.length === 0) {
+        recipe.rating = 0;
+    } else {
+        const avg = approvedWithRating.reduce((sum, c) => sum + c.rating, 0) / approvedWithRating.length;
+        recipe.rating = Math.round(avg * 10) / 10; // redondeo a 1 decimal
+    }
+};
+
+
 // Crear receta
 exports.createRecipe = async (req, res) => {
     try {
@@ -346,46 +358,15 @@ exports.deleteRecipe = async (req, res) => {
     }
 };
 
-// Calificar receta
-exports.rateRecipe = async (req, res) => {
-    try {
-        const userId = req.userId;
-        const recipeId = req.params.recipeId;
-        const { rating } = req.body;
-
-        if (typeof rating !== "number" || rating < 1 || rating > 5) {
-            return res.status(400).json({ message: "La calificación debe ser un número entre 1 y 5" });
-        }
-
-        const recipe = await Recipe.findById(recipeId);
-        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
-
-        const existing = recipe.ratings.findIndex(r => r.userId.toString() === userId);
-        if (existing !== -1) {
-            recipe.ratings[existing].rating = rating;
-        } else {
-            recipe.ratings.push({ userId, rating });
-        }
-
-        recipe.rating = recipe.ratings.reduce((sum, r) => sum + r.rating, 0) / recipe.ratings.length;
-        await recipe.save();
-
-        res.status(200).json({ message: "Calificación actualizada", rating: recipe.rating });
-    } catch (error) {
-        console.error("❌ Error rating recipe:", error);
-        res.status(500).json({ message: "Error en el servidor" });
-    }
-};
-
 // Comentar receta
 exports.addComment = async (req, res) => {
     try {
         const userId = req.userId;
-        const { text } = req.body;
+        const { text,  rating  } = req.body;
         const recipeId = req.params.recipeId;
 
-        if (!text || text.length > 500) {
-            return res.status(400).json({ message: "Comentario inválido" });
+        if (!text || text.length > 500 || typeof rating !== "number" || rating < 1 || rating > 5) {
+            return res.status(400).json({ message: "Comentario o calificación inválida" });
         }
 
         // Buscar receta
@@ -426,7 +407,9 @@ exports.approveComment = async (req, res) => {
         if (!comment) return res.status(404).json({ message: "Comentario no encontrado" });
 
         comment.approved = true;
+        recalculateRating(recipe);
         await recipe.save();
+        
         res.status(200).json({ message: "Comentario aprobado" });
     } catch (error) {
         console.error("❌ Error aprobando comentario:", error);
@@ -442,7 +425,8 @@ exports.rejectComment = async (req, res) => {
         if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
         recipe.comments = recipe.comments.filter(c => c._id.toString() !== commentId);
-        await recipe.save();
+        recalculateRating(recipe);
+        await recipe.save();        
 
         res.status(200).json({ message: "Comentario eliminado" });
     } catch (error) {

@@ -346,46 +346,6 @@ router.delete("/:recipeId", authMiddleware, deleteRecipe);
 
 /**
  * @swagger
- * /api/recipes/{recipeId}/rate:
- *   post:
- *     summary: Rate a recipe
- *     description: Allows a user to rate a recipe (1 to 5). Only one rating per user.
- *     tags: [Recipes]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: recipeId
- *         required: true
- *         schema:
- *           type: string
- *         description: The ID of the recipe to rate.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - rating
- *             properties:
- *               rating:
- *                 type: number
- *                 example: 4
- *     responses:
- *       200:
- *         description: Rating submitted or updated.
- *       400:
- *         description: Invalid input or rating out of range.
- *       404:
- *         description: Recipe not found.
- *       500:
- *         description: Server error.
- */
-router.post("/:recipeId/rate", authMiddleware, rateRecipe);
-
-/**
- * @swagger
  * /api/recipes/{recipeId}/comment:
  *   post:
  *     summary: Add a comment to a recipe
