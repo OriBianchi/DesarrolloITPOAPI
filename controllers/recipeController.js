@@ -173,8 +173,8 @@ exports.getFilteredRecipes = async (req, res) => {
 
         // Clasificación
         if (classification) {
-            const tipos = classification.split(',').map(c => c.trim().toLowerCase());
-            query.classification = { $in: tipos };
+            const tipos = classification.split(',').map(c => new RegExp(`^${c.trim()}$`, "i"));
+            query.classification = { $in: tipos };            
             console.log("📂 Classification filter:", query.classification);
         }
 
