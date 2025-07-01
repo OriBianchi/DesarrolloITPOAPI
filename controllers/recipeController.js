@@ -175,26 +175,37 @@ exports.getFilteredRecipes = async (req, res) => {
             query.classification = { $in: tipos };
         }
 
-        // Incluir ingredientes
+        // Incluir y excluir ingredientes (combinados correctamente)
+        const ingredientConditions = [];
+
         if (ingredient) {
             const ingredientesIncluidos = ingredient.split(',').map(i => i.trim().toLowerCase());
-            query.ingredients = {
-                $elemMatch: {
-                    name: { $in: ingredientesIncluidos }
-                }
-            };
-        }
-
-        // Excluir ingredientes
-        if (excludeIngredient) {
-            const ingredientesExcluidos = excludeIngredient.split(',').map(i => i.trim().toLowerCase());
-            query.ingredients = {
-                $not: {
+            ingredientConditions.push({
+                ingredients: {
                     $elemMatch: {
-                        name: { $in: ingredientesExcluidos }
+                        name: { $in: ingredientesIncluidos }
                     }
                 }
-            };
+            });
+        }
+
+        if (excludeIngredient) {
+            const ingredientesExcluidos = excludeIngredient.split(',').map(i => i.trim().toLowerCase());
+            ingredientConditions.push({
+                ingredients: {
+                    $not: {
+                        $elemMatch: {
+                            name: { $in: ingredientesExcluidos }
+                        }
+                    }
+                }
+            });
+        }
+
+        if (ingredientConditions.length === 1) {
+            Object.assign(query, ingredientConditions[0]);
+        } else if (ingredientConditions.length > 1) {
+            query.$and = ingredientConditions;
         }
 
         // Filtrado por autor (username)
