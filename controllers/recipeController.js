@@ -384,9 +384,11 @@ exports.addComment = async (req, res) => {
             userId,
             username: user.username,
             text,
+            rating,
             approved: false,
             createdAt: new Date()
         });
+        
 
         await recipe.save();
 
