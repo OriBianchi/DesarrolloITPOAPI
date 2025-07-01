@@ -240,7 +240,7 @@ exports.getFilteredRecipes = async (req, res) => {
 
         console.log("🚀 Final Mongo query:", JSON.stringify(query, null, 2));
 
-        let recipes = await Recipe.find(query).sort(sort);
+      let recipes = await Recipe.find(query).sort(sort).populate("userId", "username");
 
         // Campo isSaved
         if (req.userId) {
