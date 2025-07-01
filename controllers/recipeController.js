@@ -136,6 +136,8 @@ exports.getRecipeById = async (req, res) => {
             return res.status(403).json({ message: "No tienes permiso para ver esta receta" });
         }
 
+        recipe.comments = recipe.comments.filter(c => c.approved);
+
         const transformed = transformRecipeImages(recipe);
         res.status(200).json(transformed);
     } catch (error) {
