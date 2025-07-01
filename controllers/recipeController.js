@@ -1,43 +1,90 @@
 const Recipe = require("../models/Recipe");
 const User = require("../models/User");
 
+const encodeImageToBase64 = (image) => {
+    if (!image || !image.data) return null;
+    return {
+        base64: `data:${image.contentType};base64,${image.data.toString('base64')}`
+    };
+};
+
+const transformRecipeImages = (recipe) => {
+    const r = recipe.toObject ? recipe.toObject() : recipe;
+
+    r.frontpagePhotos = (r.frontpagePhotos || []).map(encodeImageToBase64).filter(Boolean);
+    r.steps = (r.steps || []).map(step => ({
+        ...step,
+        photos: (step.photos || []).map(encodeImageToBase64).filter(Boolean)
+    }));
+
+    return r;
+};
+
+const decodeBase64Image = (photo) => {
+    if (!photo || !photo.data) return null;
+    return {
+        data: Buffer.from(photo.data, 'base64'),
+        contentType: photo.contentType || 'image/jpeg'
+    };
+};
+
 // Crear receta
 exports.createRecipe = async (req, res) => {
     try {
         const userId = req.userId;
 
         const { name, classification, description, portions, ingredients, steps } = req.body;
+        const frontpagePhotosInput = req.body.frontpagePhotos || [];
 
+        // Validar campos obligatorios
         if (!name || !classification || !description || !portions || !ingredients || !steps) {
             return res.status(400).json({ message: "Todos los campos son obligatorios" });
         }
 
+        // Buscar usuario para guardar username
         const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: "Usuario no encontrado" });
-        }
+        if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
 
+        // Limitar y decodificar imágenes de portada (máx 3)
+        const frontpagePhotos = frontpagePhotosInput
+            .slice(0, 3)
+            .map(decodeBase64Image)
+            .filter(Boolean); // Elimina nulos por seguridad
+
+        // Decodificar fotos en los pasos (máx 3 por paso)
+        const parsedSteps = steps.map((step) => ({
+            description: step.description,
+            photos: (step.photos || [])
+                .slice(0, 3)
+                .map(decodeBase64Image)
+                .filter(Boolean)
+        }));
+
+        // Crear y guardar receta
         const newRecipe = new Recipe({
             name,
             classification,
             description,
             portions,
             ingredients,
-            steps,
+            steps: parsedSteps,
+            frontpagePhotos,
             userId,
             username: user.username
         });
 
         const savedRecipe = await newRecipe.save();
+
+        // Opcional: actualizar usuario si guardás recetas en su documento
         await User.findByIdAndUpdate(userId, { $push: { recipes: savedRecipe._id } });
 
         res.status(201).json({ message: "Receta creada con éxito", recipe: savedRecipe });
+
     } catch (error) {
-        console.error("❌ Error creating recipe:", error);
+        console.error("❌ Error creando receta:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
-
 // Obtener recetas de un usuario
 exports.getUserRecipes = async (req, res) => {
     try {
@@ -57,7 +104,9 @@ exports.getUserRecipes = async (req, res) => {
         }
 
         const recipes = await Recipe.find(filter);
-        res.status(200).json(recipes);
+        const transformed = recipes.map(transformRecipeImages);
+
+        res.status(200).json(transformed);
     } catch (error) {
         console.error("❌ Error fetching user recipes:", error);
         res.status(500).json({ message: "Error en el servidor" });
@@ -81,7 +130,8 @@ exports.getRecipeById = async (req, res) => {
             return res.status(403).json({ message: "No tienes permiso para ver esta receta" });
         }
 
-        res.status(200).json(recipe);
+        const transformed = transformRecipeImages(recipe);
+        res.status(200).json(transformed);
     } catch (error) {
         console.error("❌ Error fetching recipe:", error);
         res.status(500).json({ message: "Error en el servidor" });
@@ -151,15 +201,18 @@ exports.getFilteredRecipes = async (req, res) => {
 
         let recipes = await Recipe.find(query).sort(sort);
 
+        // Marcar recetas guardadas y transformar imágenes
         if (req.userId) {
             const user = await User.findById(req.userId).select("savedRecipes");
             const savedSet = new Set(user?.savedRecipes.map(id => id.toString()));
 
             recipes = recipes.map(recipe => {
-                const recipeObj = recipe.toObject();
-                recipeObj.isSaved = savedSet.has(recipe._id.toString());
-                return recipeObj;
+                const transformed = transformRecipeImages(recipe);
+                transformed.isSaved = savedSet.has(recipe._id.toString());
+                return transformed;
             });
+        } else {
+            recipes = recipes.map(transformRecipeImages);
         }
 
         res.status(200).json({ recipes });
@@ -181,11 +234,39 @@ exports.updateRecipe = async (req, res) => {
             return res.status(403).json({ message: "No tienes permiso para editar esta receta" });
         }
 
-        const allowedFields = ["name", "classification", "description", "portions", "ingredients", "steps"];
-        for (const key in req.body) {
-            if (allowedFields.includes(key)) {
-                recipe[key] = req.body[key];
-            }
+        const {
+            name,
+            classification,
+            description,
+            portions,
+            ingredients,
+            steps,
+            frontpagePhotos
+        } = req.body;
+
+        if (name) recipe.name = name;
+        if (classification) recipe.classification = classification;
+        if (description) recipe.description = description;
+        if (portions) recipe.portions = portions;
+        if (ingredients) recipe.ingredients = ingredients;
+
+        // Procesar fotos portada si vienen
+        if (Array.isArray(frontpagePhotos)) {
+            recipe.frontpagePhotos = frontpagePhotos
+                .slice(0, 3)
+                .map(decodeBase64Image)
+                .filter(Boolean);
+        }
+
+        // Procesar pasos con fotos si vienen
+        if (Array.isArray(steps)) {
+            recipe.steps = steps.map((step) => ({
+                description: step.description,
+                photos: (step.photos || [])
+                    .slice(0, 3)
+                    .map(decodeBase64Image)
+                    .filter(Boolean)
+            }));
         }
 
         const updatedRecipe = await recipe.save();

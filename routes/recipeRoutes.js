@@ -185,6 +185,18 @@ router.get("/", authMiddleware, getFilteredRecipes);
  *                     amount:
  *                       type: number
  *                       example: 2
+ *               frontpagePhotos:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     data:
+ *                       type: string
+ *                       description: Imagen codificada en base64
+ *                       example: "iVBORw0KGgoAAAANSUhEUgAA..."
+ *                     contentType:
+ *                       type: string
+ *                       example: "image/jpeg"
  *               steps:
  *                 type: array
  *                 items:
@@ -196,8 +208,15 @@ router.get("/", authMiddleware, getFilteredRecipes);
  *                     photos:
  *                       type: array
  *                       items:
- *                         type: string
- *                       example: []
+ *                         type: object
+ *                         properties:
+ *                           data:
+ *                             type: string
+ *                             description: Imagen codificada en base64
+ *                             example: "iVBORw0KGgoAAAANSUhEUgAA..."
+ *                           contentType:
+ *                             type: string
+ *                             example: "image/png"
  *     responses:
  *       201:
  *         description: Recipe successfully created.

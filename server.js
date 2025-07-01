@@ -12,8 +12,12 @@ const userRecipeRoutes = require("./routes/userRecipeRoutes");
 dotenv.config();
 const app = express();
 
-// Middleware to parse JSON
-app.use(express.json());  // Ensure this is before routes
+// Middleware to parse JSON (con límite aumentado)
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+
+app.use(cors());
+
 
 app.use(cors());
 
