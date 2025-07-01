@@ -148,6 +148,8 @@ exports.getRecipeById = async (req, res) => {
             return res.status(403).json({ message: "No tienes permiso para ver esta receta" });
         }
 
+        recipe.comments = recipe.comments.filter(c => c.approved);
+
         const transformed = transformRecipeImages(recipe);
         res.status(200).json(transformed);
     } catch (error) {
@@ -250,7 +252,7 @@ exports.getFilteredRecipes = async (req, res) => {
 
         console.log("🚀 Final Mongo query:", JSON.stringify(query, null, 2));
 
-        let recipes = await Recipe.find(query).sort(sort);
+      let recipes = await Recipe.find(query).sort(sort).populate("userId", "username");
 
         // Campo isSaved
         if (req.userId) {
