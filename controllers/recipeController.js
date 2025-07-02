@@ -8,11 +8,27 @@ const VALID_UNITS = [
 
 const encodeImageToBase64 = (image) => {
     if (!image || !image.data) return null;
+    return {
+        base64: `data:${image.contentType};base64,${image.data.toString("base64")}`,
+    };
+};
 
-    const mimeType = image.contentType || 'image/jpeg';
-    const base64 = image.data.toString('base64');
+// Esta versión nueva es más eficiente para listados
+const transformRecipePreview = (recipe) => {
+    const r = recipe.toObject ? recipe.toObject() : recipe;
 
-    return `data:${mimeType};base64,${base64}`;
+    // Solo 1 imagen de portada
+    const firstPhoto = r.frontpagePhotos?.[0];
+    r.frontpagePhotos = firstPhoto ? [encodeImageToBase64(firstPhoto)] : [];
+
+    // No incluir fotos de pasos en vista previa
+    if (r.steps) {
+        r.steps = r.steps.map(step => ({
+            description: step.description, // dejamos la descripción opcionalmente
+        }));
+    }
+
+    return r;
 };
 
 const transformRecipeImages = (recipe) => {
@@ -278,12 +294,12 @@ exports.getFilteredRecipes = async (req, res) => {
             const savedSet = new Set(user?.savedRecipes.map(id => id.toString()));
 
             recipes = recipes.map(recipe => {
-                const transformed = transformRecipeImages(recipe);
+                const transformed = transformRecipePreview(recipe);
                 transformed.isSaved = savedSet.has(recipe._id.toString());
                 return transformed;
             });
         } else {
-            recipes = recipes.map(transformRecipeImages);
+            recipes = recipes.map(transformRecipePreview);
         }
 
         console.log("✅ Recetas encontradas:", recipes.length);
