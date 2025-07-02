@@ -8,7 +8,11 @@ const VALID_UNITS = [
 
 const encodeImageToBase64 = (image) => {
     if (!image || !image.data) return null;
-    return `data:${image.contentType};base64,${image.data.toString('base64')}`;
+
+    const mimeType = image.contentType || 'image/jpeg';
+    const base64 = image.data.toString('base64');
+
+    return `data:${mimeType};base64,${base64}`;
 };
 
 const transformRecipeImages = (recipe) => {
