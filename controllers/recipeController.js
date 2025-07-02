@@ -212,13 +212,13 @@ exports.getFilteredRecipes = async (req, res) => {
         const condicionesIngrediente = [];
 
         if (ingredient) {
-            const incluidos = ingredient.split(',').map(i => i.trim());
-            condicionesIngrediente.push({
-                "ingredients.name": {
-                    $in: incluidos.map(i => new RegExp(`^${i}$`, "i"))
-                }
-            });
+          const incluidos = ingredient.split(',').map(i => i.trim());
+          const incluyeAND = incluidos.map(i => ({
+            "ingredients.name": new RegExp(`^${i}$`, "i")
+          }));
+          condicionesIngrediente.push(...incluyeAND);
         }
+
 
         if (excludeIngredient) {
             const excluidos = excludeIngredient.split(',').map(i => i.trim());
