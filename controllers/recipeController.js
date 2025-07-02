@@ -165,38 +165,57 @@ exports.getUserRecipes = async (req, res) => {
     }
 };
 
-// Obtener receta por ID
 exports.getRecipeById = async (req, res) => {
     try {
         const recipeId = req.params.recipeId;
-        const recipe = await Recipe.findById(recipeId).populate("userId", "username email");
+        console.log("📥 Recipe ID recibido:", recipeId);
 
-        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
+        const recipe = await Recipe.findById(recipeId).populate("userId", "username email");
+        if (!recipe) {
+            console.log("❌ Receta no encontrada");
+            return res.status(404).json({ message: "Receta no encontrada" });
+        }
+
+        console.log("✅ Receta encontrada:", recipe.name);
+        console.log("👤 recipe.userId poblado:", recipe.userId); // puede ser objeto o ID
 
         const requestingUserId = req.userId;
-        const requestingUser = await User.findById(requestingUserId);
-        const isAdmin = requestingUser?.role === "admin";
-        const isOwner = recipe.userId._id.toString() === requestingUserId;
+        console.log("🔐 Usuario autenticado ID:", requestingUserId);
 
-        if (!recipe.status) {
-            const user = await User.findById(req.userId);
-            const isAdmin = user?.role === "admin";
-            const isOwner = recipe.userId._id?.toString() === req.userId || recipe.userId.toString() === req.userId;
-        
-            if (!isAdmin && !isOwner) {
-                return res.status(403).json({ message: "No tienes permiso para ver esta receta" });
-            }
-        }        
+        const user = await User.findById(requestingUserId);
+        if (!user) {
+            console.log("❌ Usuario no autenticado encontrado en DB");
+            return res.status(403).json({ message: "Usuario no autorizado" });
+        }
 
+        console.log("✅ Usuario autenticado:", user.username, "| Rol:", user.role);
+
+        const isAdmin = user.role === "admin";
+        const isOwner =
+            recipe.userId?._id?.toString() === requestingUserId ||
+            recipe.userId?.toString() === requestingUserId;
+
+        console.log("🛡 ¿Es admin?", isAdmin);
+        console.log("👑 ¿Es dueño?", isOwner);
+        console.log("📌 ¿Está publicada la receta?", recipe.status);
+
+        if (!recipe.status && !isAdmin && !isOwner) {
+            console.log("⛔ Acceso denegado: no es admin ni dueño y receta no publicada");
+            return res.status(403).json({ message: "No tienes permiso para ver esta receta" });
+        }
+
+        // Solo comentarios aprobados
         recipe.comments = recipe.comments.filter(c => c.approved);
 
         const transformed = transformRecipeImages(recipe);
-        res.status(200).json(transformed);
+        return res.status(200).json(transformed);
+
     } catch (error) {
         console.error("❌ Error fetching recipe:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
+
 
 exports.getFilteredRecipes = async (req, res) => {
     try {
