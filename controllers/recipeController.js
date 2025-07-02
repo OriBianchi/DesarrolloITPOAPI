@@ -178,9 +178,15 @@ exports.getRecipeById = async (req, res) => {
         const isAdmin = requestingUser?.role === "admin";
         const isOwner = recipe.userId._id.toString() === requestingUserId;
 
-        if (!recipe.status && !isAdmin && !isOwner) {
-            return res.status(403).json({ message: "No tienes permiso para ver esta receta" });
-        }
+        if (!recipe.status) {
+            const user = await User.findById(req.userId);
+            const isAdmin = user?.role === "admin";
+            const isOwner = recipe.userId._id?.toString() === req.userId || recipe.userId.toString() === req.userId;
+        
+            if (!isAdmin && !isOwner) {
+                return res.status(403).json({ message: "No tienes permiso para ver esta receta" });
+            }
+        }        
 
         recipe.comments = recipe.comments.filter(c => c.approved);
 
