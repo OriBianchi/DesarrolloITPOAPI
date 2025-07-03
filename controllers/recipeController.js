@@ -87,7 +87,7 @@ exports.createRecipe = async (req, res) => {
 
             return {
                 name: i.name.toLowerCase(),
-                amount: i.amount,
+                amount: i.amount / portions,
                 unit: i.unit.toLowerCase()
             };
         });
