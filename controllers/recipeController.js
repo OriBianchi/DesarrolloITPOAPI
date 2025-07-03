@@ -80,16 +80,17 @@ exports.createRecipe = async (req, res) => {
         // Validar y normalizar ingredientes
         const validUnits = ["g", "kg", "unidades", "tazas", "ml", "cucharadas", "cucharaditas", "pizca", "otro"];
 
+        // 👇 Sacá la división acá:
         const normalizedIngredients = ingredients.map(i => {
-            if (!i.name || !i.amount || !i.unit || !VALID_UNITS.includes(i.unit)) {
-                throw new Error(`Ingrediente inválido: ${JSON.stringify(i)}`);
-            }
+          if (!i.name || !i.amount || !i.unit || !VALID_UNITS.includes(i.unit)) {
+            throw new Error(`Ingrediente inválido: ${JSON.stringify(i)}`);
+          }
 
-            return {
-                name: i.name.toLowerCase(),
-                amount: i.amount / portions,
-                unit: i.unit.toLowerCase()
-            };
+          return {
+            name: i.name.toLowerCase(),
+            amount: i.amount, // 👈 YA NO DIVIDAS
+            unit: i.unit.toLowerCase()
+          };
         });
 
 
