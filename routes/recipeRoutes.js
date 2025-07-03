@@ -257,7 +257,7 @@ router.post("/create", authMiddleware, createRecipe);
  *       500:
  *         description: Server error.
  */
-router.get("/:recipeId", getRecipeById);
+router.get("/:recipeId",authMiddleware, getRecipeById);
 /**
  * @swagger
  * /api/recipes/{recipeId}:
