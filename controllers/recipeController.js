@@ -535,13 +535,16 @@ exports.rejectRecipe = async (req, res) => {
     }
 };
 
-// Pendientes
 exports.getPendingRecipes = async (req, res) => {
     try {
-        const recipes = await Recipe.find({ status: false }).populate("userId", "username email");
+        let recipes = await Recipe.find({ status: false }).populate("userId", "username");
+
+        // Aplicamos la transformación (solo 1 imagen, sin steps completos)
+        recipes = recipes.map(transformRecipePreview);
+
         res.status(200).json({ pendingRecipes: recipes });
     } catch (error) {
-        console.error("❌ Error pendientes:", error);
+        console.error("❌ Error en getPendingRecipes:", error);
         res.status(500).json({ message: "Error en el servidor" });
     }
 };
