@@ -498,7 +498,7 @@ exports.getPendingRecipes = async (req, res) => {
         let recipes = await Recipe.find({ status: false }).populate("userId", "username");
 
         // Aplicamos la transformación (solo 1 imagen, sin steps completos)
-        recipes = recipes.map(transformRecipePreview);
+        recipes = recipes.map(transformRecipeImages);
 
         res.status(200).json({ pendingRecipes: recipes });
     } catch (error) {
