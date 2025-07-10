@@ -12,17 +12,14 @@ const {
   addComment,
   approveRecipe,
   rejectRecipe,
-  approveComment,
+  approveComment, // 👈 new
   rejectComment,
   getPendingRecipes,
-  getPendingComments,
-  checkUserRecipeName
+  getPendingComments
 } = require("../controllers/recipeController");
 
 const authMiddleware = require("../middleware/authMiddleware");
 const requireAdmin = require("../middleware/requireAdmin");
-
-router.get("/check-name", authMiddleware, checkUserRecipeName);
 
 /**
  * @swagger
