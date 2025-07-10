@@ -355,6 +355,8 @@ exports.updateRecipe = async (req, res) => {
             }));
         }
 
+        recipe.status = false;
+
         const updatedRecipe = await recipe.save();
         res.status(200).json({ message: "Receta actualizada", recipe: updatedRecipe });
     } catch (error) {
