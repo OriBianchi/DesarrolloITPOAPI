@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 
 const recipeSchema = new mongoose.Schema({
     status: { type: Boolean, default: false },
-    rejected: { type: Boolean, default: false },
     uploadDate: { type: Date, default: Date.now },
     name: { type: String, required: true, maxlength: 30 },
     classification: { 

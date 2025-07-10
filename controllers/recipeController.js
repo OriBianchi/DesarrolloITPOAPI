@@ -189,7 +189,6 @@ exports.getFilteredRecipes = async (req, res) => {
         } = req.query;
 
         const query = {};
-
         console.log("📥 Query params:", req.query);
 
         // Búsqueda por nombre, descripción o ingrediente
@@ -267,10 +266,6 @@ exports.getFilteredRecipes = async (req, res) => {
             sort[sortBy] = sortOrder === "asc" ? 1 : -1;
             console.log("📊 Sorting:", sort);
         }
-
-        query.status = true;
-        query.rejected = false;
-
 
         console.log("🚀 Final Mongo query:", JSON.stringify(query, null, 2));
 
@@ -485,24 +480,18 @@ exports.approveRecipe = async (req, res) => {
 
 // Rechazar receta
 exports.rejectRecipe = async (req, res) => {
-  try {
-    const { recipeId } = req.params;
+    try {
+        const { recipeId } = req.params;
+        const recipe = await Recipe.findById(recipeId);
+        if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
 
-    const recipe = await Recipe.findById(recipeId);
-    if (!recipe) return res.status(404).json({ message: "Receta no encontrada" });
-
-    recipe.status = false;    // no publicada
-    recipe.rejected = true;   // ahora es rechazada
-
-    await recipe.save();
-
-    res.status(200).json({ message: "Receta rechazada" });
-  } catch (error) {
-    console.error("❌ Error rechazando receta:", error);
-    res.status(500).json({ message: "Error en el servidor" });
-  }
+        await Recipe.findByIdAndDelete(recipeId);
+        res.status(200).json({ message: "Receta eliminada" });
+    } catch (error) {
+        console.error("❌ Error rechazando receta:", error);
+        res.status(500).json({ message: "Error en el servidor" });
+    }
 };
-
 
 exports.getPendingRecipes = async (req, res) => {
     try {
