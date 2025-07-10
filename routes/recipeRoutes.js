@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 
-const { 
-  createRecipe, 
-  getUserRecipes, 
-  getRecipeById, 
+const {
+  createRecipe,
+  getUserRecipes,
+  getRecipeById,
   getFilteredRecipes,
   updateRecipe,
   deleteRecipe,
@@ -12,14 +12,17 @@ const {
   addComment,
   approveRecipe,
   rejectRecipe,
-  approveComment, // 👈 new
+  approveComment,
   rejectComment,
   getPendingRecipes,
-  getPendingComments
+  getPendingComments,
+  checkUserRecipeName
 } = require("../controllers/recipeController");
 
 const authMiddleware = require("../middleware/authMiddleware");
 const requireAdmin = require("../middleware/requireAdmin");
+
+router.get("/check-name", authMiddleware, checkUserRecipeName);
 
 /**
  * @swagger
