@@ -540,22 +540,28 @@ exports.getPendingComments = async (req, res) => {
 // Chequear receta duplicada del mismo usuario
 
 exports.checkUserRecipeName = async (req, res) => {
-  try {
-    const { name } = req.query;
-    const userId = req.userId;
+ exports.checkUserRecipeName = async (req, res) => {
+   try {
+     const { name, excludeId } = req.query;
+     const userId = req.userId;
 
-    if (!name) {
-      return res.status(400).json({ message: "Falta el nombre" });
-    }
+     if (!name) {
+       return res.status(400).json({ message: "Falta el nombre" });
+     }
 
-    const exists = await Recipe.findOne({ name, userId });
-    if (exists) {
-      return res.json({ exists: true, id: exists._id });
-    } else {
-      return res.json({ exists: false });
-    }
-  } catch (error) {
-    console.error("❌ Error checkUserRecipeName:", error);
-    return res.status(500).json({ message: "Error en el servidor" });
-  }
-};
+     const query = { name, userId };
+     if (excludeId) {
+       query._id = { $ne: excludeId }; // excluye receta actual si se está editando
+     }
+
+     const exists = await Recipe.findOne(query);
+     if (exists) {
+       return res.json({ exists: true, id: exists._id });
+     } else {
+       return res.json({ exists: false });
+     }
+   } catch (error) {
+     console.error("❌ Error checkUserRecipeName:", error);
+     return res.status(500).json({ message: "Error en el servidor" });
+   }
+ };
